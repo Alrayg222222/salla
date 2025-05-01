@@ -44,37 +44,38 @@ def webhook():
     # تنسيق الرسالة بشكل مناسب
     message = "<b>📦 Webhook من سلة:</b>\n\n"
     
-    # تفاصيل الفاتورة
-    message += "<b>تفاصيل الفاتورة:</b>\n"
-    message += f"رقم الفاتورة: <code>{data['data']['invoice_number']}</code>\n"
-    message += f"نوع الفاتورة: <i>{data['data']['type']}</i>\n"
-    message += f"تاريخ الفاتورة: <i>{data['data']['date']}</i>\n"
-    
-    # تفاصيل العميل
-    customer = data['data']['customer']
-    message += "\n<b>بيانات العميل:</b>\n"
-    message += f"الاسم: <i>{customer['first_name']} {customer['last_name']}</i>\n"
-    message += f"رقم الجوال: <i>{customer['mobile']}</i>\n"
-    message += f"البريد الإلكتروني: <i>{customer['email']}</i>\n"
-    message += f"العنوان: <i>{customer['address']['street_name']}، {customer['address']['city']}</i>\n"
-    
-    # تفاصيل الطلب
-    message += "\n<b>تفاصيل الطلب:</b>\n"
+    # تفاصيل المنتجات مع عدد مرات الشراء ومجموع السعر
+    message += "<b>تفاصيل المنتجات:</b>\n"
+    total_products_amount = 0
     for item in data['data']['items']:
-        message += f"- <b>{item['name']}</b> x{item['quantity']}\n"
-        message += f"السعر: <b>{item['total']['amount']} {item['total']['currency']}</b>\n"
+        product_name = item['name']
+        quantity = item['quantity']
+        price = item['total']['amount']
+        total_product_price = price * quantity  # حساب مجموع السعر للمنتج بناءً على الكمية
+        message += f"- <b>{product_name}</b> x{quantity}\n"
+        message += f"سعر المنتج: <b>{price} {item['total']['currency']}</b>\n"
+        message += f"مجموع السعر: <b>{total_product_price:.2f} {item['total']['currency']}</b>\n"
+        
+        total_products_amount += total_product_price  # جمع مجموع أسعار المنتجات
+    
+    # عرض مجموع المنتجات
+    message += f"\n<b>مجموع المنتجات:</b>\n"
+    message += f"المجموع: <b>{total_products_amount:.2f} {data['data']['total']['currency']}</b>\n"
     
     # إجمالي الطلب
     total_amount = data['data']['total']['amount']
     message += "\n<b>إجمالي الطلب:</b>\n"
-    message += f"المجموع: <b>{total_amount} {data['data']['total']['currency']}</b>\n"
+    message += f"المجموع: <b>{total_amount:.2f} {data['data']['total']['currency']}</b>\n"
     
     # تحديث المجموع الإجمالي
     update_total_collected(total_amount)
     
+    # إضافة 5 أسطر فارغة بين المجموع الإجمالي والبيانات السابقة
+    message += "\n\n\n\n\n"  # 5 أسطر فارغة
+
     # عرض المجموع الإجمالي للمبالغ التي تم جمعها في آخر 24 ساعة
-    message += "\n<b>المجموع الإجمالي خلال آخر 24 ساعة:</b>\n"
-    message += f"المجموع: <b>{total_collected} {data['data']['total']['currency']}</b>\n"
+    message += "<b>المجموع الإجمالي خلال آخر 24 ساعة:</b>\n"
+    message += f"المجموع: <b>{total_collected:.2f} {data['data']['total']['currency']}</b>\n"
     
     # إرسال الرسالة إلى تيليجرام
     send_to_telegram(message)
