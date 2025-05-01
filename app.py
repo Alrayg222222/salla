@@ -8,21 +8,35 @@ app = Flask(__name__)
 
 # جلب التوكن و Chat ID من متغيرات البيئة
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+CHAT_ID = os.environ.get("CHAT_ID")  # Chat ID الأول
+SECOND_CHAT_ID = os.environ.get("SECOND_CHAT_ID")  # Chat ID الثاني (الجديد)
 
 # متغير لتخزين المجموع الإجمالي
 total_collected = 0
 last_reset_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
+# قاموس لتخزين عدد مرات شراء كل منتج
+product_purchase_count = {}
+
 # دالة لإرسال الرسالة إلى تيليجرام
 def send_to_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {
+    
+    # إرسال الرسالة إلى chat ID الأول
+    payload_first = {
         "chat_id": CHAT_ID,
         "text": message,
         "parse_mode": "HTML"
     }
-    requests.post(url, data=payload)
+    requests.post(url, data=payload_first)
+    
+    # إرسال الرسالة إلى chat ID الثاني
+    payload_second = {
+        "chat_id": SECOND_CHAT_ID,
+        "text": message,
+        "parse_mode": "HTML"
+    }
+    requests.post(url, data=payload_second)
 
 # دالة لتحديث المجموع الإجمالي
 def update_total_collected(amount):
@@ -42,30 +56,41 @@ def webhook():
     data = request.get_json()
     
     # تنسيق الرسالة بشكل مناسب
-    message = "<b>📦 Webhook من سلة:</b>\n\n"
+    message = "<b>📦 سلة :</b>\n\n"
     
-    # تفاصيل المنتجات مع عدد مرات الشراء ومجموع السعر
-    message += "<b>تفاصيل المنتجات:</b>\n"
-    total_products_amount = 0
+    # حفظ آخر منتج تم شراؤه
+    last_product_name = ""
     for item in data['data']['items']:
         product_name = item['name']
         quantity = item['quantity']
-        price = item['total']['amount']
-        total_product_price = price * quantity  # حساب مجموع السعر للمنتج بناءً على الكمية
-        message += f"- <b>{product_name}</b> x{quantity}\n"
-        message += f"سعر المنتج: <b>{price} {item['total']['currency']}</b>\n"
-        message += f"مجموع السعر: <b>{total_product_price:.2f} {item['total']['currency']}</b>\n"
         
-        total_products_amount += total_product_price  # جمع مجموع أسعار المنتجات
+        # تحديث عدد مرات شراء المنتج
+        if product_name in product_purchase_count:
+            product_purchase_count[product_name] += quantity
+        else:
+            product_purchase_count[product_name] = quantity
+        
+        # حفظ اسم آخر منتج تم شراؤه
+        last_product_name = product_name
     
-    # عرض مجموع المنتجات
-    message += f"\n<b>مجموع المنتجات:</b>\n"
-    message += f"المجموع: <b>{total_products_amount:.2f} {data['data']['total']['currency']}</b>\n"
+    # عرض آخر منتج تم شراؤه أولاً
+    message += f"<b>آخر منتج تم شراؤه:</b>\n"
+    message += f"- <b>{last_product_name}</b>\n"
     
     # إجمالي الطلب
     total_amount = data['data']['total']['amount']
     message += "\n<b>إجمالي الطلب:</b>\n"
     message += f"المجموع: <b>{total_amount:.2f} {data['data']['total']['currency']}</b>\n"
+    
+    # تفاصيل المنتجات مع عدد مرات الشراء
+    message += "\n<b>تفاصيل المنتجات:</b>\n"
+    
+    for item in data['data']['items']:
+        product_name = item['name']
+        quantity = item['quantity']
+        
+        # عرض المنتج وعدد مرات شرائه
+        message += f"- <b>{product_name}</b>: <b>{product_purchase_count[product_name]}</b>\n"
     
     # تحديث المجموع الإجمالي
     update_total_collected(total_amount)
