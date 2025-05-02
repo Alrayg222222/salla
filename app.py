@@ -56,10 +56,14 @@ def webhook():
     data = request.get_json()
     
     # تنسيق الرسالة بشكل مناسب
-    message = "<b>📦 Webhook من سلة:</b>\n\n"
+    message = "<b>📦 سلة:</b>\n\n"
+    
+    # إجمالي الطلب أول شيء في الرسالة
+    total_amount = data['data']['total']['amount']
+    message += "<b>شراء بقيمة:</b> المجموع: <font color='blue'><b>{:.2f} {}</b></font>\n".format(total_amount, data['data']['total']['currency'])
     
     # تفاصيل المنتجات التي تم شراؤها في الطلب الحالي
-    message += "<b>تفاصيل المنتجات:</b>\n"
+    message += "\n<b>تفاصيل المنتجات:</b>\n"
     for item in data['data']['items']:
         product_name = item['name']
         quantity = item['quantity']
@@ -68,15 +72,6 @@ def webhook():
         # إضافة تفاصيل المنتج مع السعر والكمية
         message += f"- <b>{product_name}</b> x{quantity}\n"
         message += f"  السعر: <font color='green'><b>{price:.2f} {data['data']['total']['currency']}</b></font>\n"
-    
-    # مجموع المنتجات
-    total_amount = data['data']['total']['amount']
-    message += "\n<b>مجموع المنتجات:</b>\n"
-    message += f"المجموع: <font color='blue'><b>{total_amount:.2f} {data['data']['total']['currency']}</b></font>\n"
-    
-    # إجمالي الطلب
-    message += "\n<b>إجمالي الطلب:</b>\n"
-    message += f"المجموع: <font color='blue'><b>{total_amount:.2f} {data['data']['total']['currency']}</b></font>\n"
     
     # تحديث عدد مرات شراء كل منتج
     for item in data['data']['items']:
@@ -90,7 +85,7 @@ def webhook():
             product_purchase_count[product_name] = quantity
     
     # عرض المنتجات المتراكمة مع الكميات (مرقمة)
-    message += "\n<b>تفاصيل المنتجات المتراكمة:</b>\n"
+    message += "\n<b>المنتجات التي تم شراءها اليوم:</b>\n"
     counter = 1
     for product, quantity in product_purchase_count.items():
         message += f"{counter}. <b>{product}</b>: <font color='red'><b>{quantity}</b></font>\n"
