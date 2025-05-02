@@ -56,11 +56,11 @@ def webhook():
     data = request.get_json()
     
     # تنسيق الرسالة بشكل مناسب
-    message = "<b>📦 سلة:</b> "
+    message = "<b>📦شراء:</b> "
     
     # إجمالي الطلب في سطر واحد مع المجموع
     total_amount = data['data']['total']['amount']
-    message += "<b>شراء بقيمة:</b> المجموع: <b>{:.2f} {}</b> ".format(total_amount, data['data']['total']['currency'])
+    message += "<b></b><b>{:.2f} {}</b> ".format(total_amount, data['data']['total']['currency'])
     
     # إضافة أول كلمة من كل منتج بين قوسين
     for item in data['data']['items']:
