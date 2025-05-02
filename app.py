@@ -58,9 +58,9 @@ def webhook():
     # تنسيق الرسالة بشكل مناسب
     message = "<b>📦 سلة:</b>\n\n"
     
-    # إجمالي الطلب أول شيء في الرسالة
+    # إجمالي الطلب في سطر واحد
     total_amount = data['data']['total']['amount']
-    message += "<b>شراء بقيمة:</b> المجموع: <font color='blue'><b>{:.2f} {}</b></font>\n".format(total_amount, data['data']['total']['currency'])
+    message += "<b>شراء بقيمة:</b> المجموع: <b>{:.2f} {}</b>\n".format(total_amount, data['data']['total']['currency'])
     
     # تفاصيل المنتجات التي تم شراؤها في الطلب الحالي
     message += "\n<b>تفاصيل المنتجات:</b>\n"
@@ -71,7 +71,7 @@ def webhook():
         
         # إضافة تفاصيل المنتج مع السعر والكمية
         message += f"- <b>{product_name}</b> x{quantity}\n"
-        message += f"  السعر: <font color='green'><b>{price:.2f} {data['data']['total']['currency']}</b></font>\n"
+        message += f"  السعر: <b>{price:.2f} {data['data']['total']['currency']}</b>\n"
     
     # تحديث عدد مرات شراء كل منتج
     for item in data['data']['items']:
@@ -88,8 +88,9 @@ def webhook():
     message += "\n<b>المنتجات التي تم شراءها اليوم:</b>\n"
     counter = 1
     for product, quantity in product_purchase_count.items():
-        message += f"{counter}. <b>{product}</b>: <font color='red'><b>{quantity}</b></font>\n"
+        message += f"{counter}. <b>{product}</b>: <b>{quantity}</b>\n"
         counter += 1
+        message += "\n" + "-"*30 + "\n"  # إضافة خط طويل بين كل منتج وآخر
     
     # تحديث المجموع الإجمالي
     update_total_collected(total_amount)
@@ -99,7 +100,7 @@ def webhook():
 
     # عرض المجموع الإجمالي للمبالغ التي تم جمعها في آخر 24 ساعة
     message += "<b>المجموع الإجمالي خلال آخر 24 ساعة:</b>\n"
-    message += f"المجموع: <font color='green'><b>{total_collected:.2f} {data['data']['total']['currency']}</b></font>\n"
+    message += f"المجموع: <b>{total_collected:.2f} {data['data']['total']['currency']}</b>\n"
     
     # إرسال الرسالة إلى تيليجرام
     send_to_telegram(message)
