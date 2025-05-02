@@ -56,10 +56,29 @@ def webhook():
     data = request.get_json()
     
     # تنسيق الرسالة بشكل مناسب
-    message = "<b>📦 سلة :</b>\n\n"
+    message = "<b>📦 سلة:</b>\n\n"
     
-    # حفظ آخر منتج تم شراؤه
-    last_product_name = ""
+    # تفاصيل المنتجات التي تم شراؤها في الطلب الحالي
+    message += "<b>تفاصيل المنتجات:</b>\n"
+    for item in data['data']['items']:
+        product_name = item['name']
+        quantity = item['quantity']
+        price = item['total']['amount']
+        
+        # إضافة تفاصيل المنتج مع السعر والكمية
+        message += f"- <b>{product_name}</b> x{quantity}\n"
+        message += f"  السعر: <b>{price:.2f} {data['data']['total']['currency']}</b>\n"
+    
+    # مجموع المنتجات
+    total_amount = data['data']['total']['amount']
+    message += "\n<b>مجموع المنتجات:</b>\n"
+    message += f"المجموع: <b>{total_amount:.2f} {data['data']['total']['currency']}</b>\n"
+    
+    # إجمالي الطلب
+    message += "\n<b>إجمالي الطلب:</b>\n"
+    message += f"المجموع: <b>{total_amount:.2f} {data['data']['total']['currency']}</b>\n"
+    
+    # تحديث عدد مرات شراء كل منتج
     for item in data['data']['items']:
         product_name = item['name']
         quantity = item['quantity']
@@ -69,28 +88,13 @@ def webhook():
             product_purchase_count[product_name] += quantity
         else:
             product_purchase_count[product_name] = quantity
-        
-        # حفظ اسم آخر منتج تم شراؤه
-        last_product_name = product_name
     
-    # عرض آخر منتج تم شراؤه أولاً
-    message += f"<b>آخر منتج تم شراؤه:</b>\n"
-    message += f"- <b>{last_product_name}</b>\n"
-    
-    # إجمالي الطلب
-    total_amount = data['data']['total']['amount']
-    message += "\n<b>إجمالي الطلب:</b>\n"
-    message += f"المجموع: <b>{total_amount:.2f} {data['data']['total']['currency']}</b>\n"
-    
-    # تفاصيل المنتجات مع عدد مرات الشراء
-    message += "\n<b>تفاصيل المنتجات:</b>\n"
-    
-    for item in data['data']['items']:
-        product_name = item['name']
-        quantity = item['quantity']
-        
-        # عرض المنتج وعدد مرات شرائه
-        message += f"- <b>{product_name}</b>: <b>{product_purchase_count[product_name]}</b>\n"
+    # عرض المنتجات المتراكمة مع الكميات (مرقمة)
+    message += "\n<b>المنتجات التي تم شراءها اليوم:</b>\n"
+    counter = 1
+    for product, quantity in product_purchase_count.items():
+        message += f"{counter}. <b>{product}</b>: <b>{quantity}</b>\n"
+        counter += 1
     
     # تحديث المجموع الإجمالي
     update_total_collected(total_amount)
@@ -99,7 +103,7 @@ def webhook():
     message += "\n\n\n\n\n"  # 5 أسطر فارغة
 
     # عرض المجموع الإجمالي للمبالغ التي تم جمعها في آخر 24 ساعة
-    message += "<b>المجموع الإجمالي خلال آخر 24 ساعة:</b>\n"
+    message += "<b>دخلنا اليوم:</b>\n"
     message += f"المجموع: <b>{total_collected:.2f} {data['data']['total']['currency']}</b>\n"
     
     # إرسال الرسالة إلى تيليجرام
