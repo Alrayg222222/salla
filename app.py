@@ -1,6 +1,5 @@
 from flask import Flask, request
 import requests
-import json
 import os
 from datetime import datetime, timedelta
 
@@ -8,119 +7,99 @@ app = Flask(__name__)
 
 # جلب التوكن و Chat ID من متغيرات البيئة
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-CHAT_ID = os.environ.get("CHAT_ID")  # Chat ID الأول
-SECOND_CHAT_ID = os.environ.get("SECOND_CHAT_ID")  # Chat ID الثاني (الجديد)
+CHAT_ID = os.environ.get("CHAT_ID")
+SECOND_CHAT_ID = os.environ.get("SECOND_CHAT_ID")
 
-# متغير لتخزين المجموع الإجمالي
+# متغيرات لحفظ المجموع التراكمي وعدد مرات شراء كل منتج
 total_collected = 0
 last_reset_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-
-# قاموس لتخزين عدد مرات شراء كل منتج
 product_purchase_count = {}
 
-# دالة لإرسال الرسالة إلى تيليجرام
+# إرسال الرسالة إلى Telegram
 def send_to_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    
-    # إرسال الرسالة إلى chat ID الأول
-    payload_first = {
-        "chat_id": CHAT_ID,
-        "text": message,
-        "parse_mode": "HTML"
-    }
-    requests.post(url, data=payload_first)
-    
-    # إرسال الرسالة إلى chat ID الثاني
-    payload_second = {
-        "chat_id": SECOND_CHAT_ID,
-        "text": message,
-        "parse_mode": "HTML"
-    }
-    requests.post(url, data=payload_second)
+    for chat_id in [CHAT_ID, SECOND_CHAT_ID]:
+        if chat_id:
+            payload = {
+                "chat_id": chat_id,
+                "text": message,
+                "parse_mode": "HTML"
+            }
+            try:
+                requests.post(url, data=payload)
+            except Exception as e:
+                print(f"خطأ أثناء الإرسال إلى Telegram: {e}")
 
-# دالة لتحديث المجموع الإجمالي
+# تحديث المجموع التراكمي كل 24 ساعة
 def update_total_collected(amount):
     global total_collected, last_reset_time
     current_time = datetime.now()
-    
-    # إذا مر 24 ساعة من آخر تحديث (12:00 صباحًا)
     if current_time >= last_reset_time + timedelta(days=1):
-        total_collected = 0  # إعادة تعيين المجموع
-        last_reset_time = current_time.replace(hour=0, minute=0, second=0, microsecond=0)  # تعيين بداية اليوم الجديد
-    
-    total_collected += amount  # إضافة المبلغ الجديد إلى المجموع
+        total_collected = 0
+        last_reset_time = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
+    total_collected += amount
 
-# المسار الذي يتلقى بيانات Webhook
+# نقطة استقبال Webhook
 @app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.get_json()
-    
-    # تنسيق الرسالة بشكل مناسب
-    message = "<b>💸شراء💸</b> "
-    
-    # إجمالي الطلب في سطر واحد مع المجموع
-    total_amount = data['data']['total']['amount']
-    message += "<b></b><b>{:.2f} {}</b> ".format(total_amount, data['data']['total']['currency'])
-    
-    # إضافة أول كلمتين من كل منتج بين قوسين
-    for item in data['data']['items']:
-        product_name = item['name']
-        first_two_words = " ".join(product_name.split()[:2])  # أخذ أول كلمتين من اسم المنتج
-        
-        # إضافة أول كلمتين من المنتج بين قوسين بعد المجموع
-        message += f"({first_two_words}) "
-    message += "\n\n\n\n\n"
-    
-    # إضافة الرموز التعبيرية 🎉 8 مرات قبل "تفاصيل المنتجات"
-    message += "🎉🎉🎉🎉🎉🎉🎉🎉\n"
-    
-    # تفاصيل المنتجات التي تم شراؤها في الطلب الحالي
-    message += "\n<b>تفاصيل المنتجات:</b>\n"
-    for item in data['data']['items']:
-        product_name = item['name']
-        quantity = item['quantity']
-        price = item['total']['amount']
-        
-        # إضافة تفاصيل المنتج مع السعر والكمية
-        message += f"- <b>{product_name}</b> x{quantity}\n"
-        message += f"  السعر: <b>{price:.2f} {data['data']['total']['currency']}</b>\n"
-    
-    # تحديث عدد مرات شراء كل منتج
-    for item in data['data']['items']:
-        product_name = item['name']
-        quantity = item['quantity']
-        
-        # تحديث عدد مرات شراء المنتج
-        if product_name in product_purchase_count:
-            product_purchase_count[product_name] += quantity
-        else:
-            product_purchase_count[product_name] = quantity
-    
-    # إضافة الرموز التعبيرية 🎉 8 مرات قبل "المنتجات التي تم شراءها اليوم"
-    message += "\n🎉🎉🎉🎉🎉🎉🎉🎉\n"
-    
-    # عرض المنتجات المتراكمة مع الكميات (نقطي)
-    message += "\n<b>المنتجات التي تم شراءها اليوم:</b>\n"
-    for product, quantity in product_purchase_count.items():
-        # إضافة عدد المنتجات بين الرموز ⚽
-        message += f"• <b>{product}</b>: ⚽{quantity}⚽\n"  # تغيير الترقييم إلى نقطي مع الرموز ⚽
-    
-    # تحديث المجموع الإجمالي
-    update_total_collected(total_amount)
-    
-    # إضافة 5 أسطر فارغة بين المجموع الإجمالي والبيانات السابقة
-    message += "\n\n\n\n\n"  # 5 أسطر فارغة
 
-    # عرض المجموع الإجمالي للمبالغ التي تم جمعها في آخر 24 ساعة
-    message += "<b>المجموع الإجمالي خلال آخر 24 ساعة:</b>\n"
-    message += f"المجموع: <b>{total_collected:.2f} {data['data']['total']['currency']}</b>\n"
-    
-    # إرسال الرسالة إلى تيليجرام
+    # استخراج البيانات
+    order_data = data.get("data", {})
+    total_amount = order_data.get("total", {}).get("amount", 0)
+    currency = order_data.get("total", {}).get("currency", "SAR")
+    items = order_data.get("items", [])
+
+    # بداية الرسالة
+    message = "<b>💸شراء💸</b> <b>{:.2f} {}</b> ".format(total_amount, currency)
+
+    # إضافة أول كلمتين من كل منتج بين قوسين
+    for item in items:
+        name = item.get("name", "")
+        short_name = " ".join(name.split()[:2])
+        message += f"({short_name}) "
+
+    message += "\n\n\n\n\n"
+    message += "🎉" * 13 + "\n"
+
+    # تفاصيل المنتجات (أول 4 كلمات فقط)
+    message += "\n<b>تفاصيل المنتجات:</b>\n"
+    for item in items:
+        full_name = item.get("name", "")
+        short_name = " ".join(full_name.split()[:4])
+        quantity = item.get("quantity", 1)
+        price = item.get("total", {}).get("amount", 0)
+        message += f"- <b>{short_name}</b> x{quantity}\n"
+        message += f"  السعر: <b>{price:.2f} {currency}</b>\n"
+
+    # تحديث عداد شراء كل منتج
+    for item in items:
+        name = item.get("name", "")
+        quantity = item.get("quantity", 1)
+        product_purchase_count[name] = product_purchase_count.get(name, 0) + quantity
+
+    # عرض المنتجات التي تم شراءها اليوم
+    message += "\n" + "🎉" * 13 + "\n"
+    message += "<b>المنتجات التي تم شراءها اليوم:</b>\n"
+    for product, quantity in product_purchase_count.items():
+        short_name = " ".join(product.split()[:2])
+        message += f"• ⚽{quantity}⚽ <b>{short_name}</b>\n"
+    message += "🎉" * 13 + "\n"
+
+    # تحديث المجموع التراكمي
+    update_total_collected(total_amount)
+
+    # عرض المجموع التراكمي خلال آخر 24 ساعة
+    message += "\n\n\n\n\n"
+    message += "💰 <b>المجموع خلال آخر 24 ساعة:</b>\n"
+    message += f"💵 <b>{total_collected:.2f} {currency}</b>\n"
+
+    # إرسال الرسالة
     send_to_telegram(message)
-    
+
     return "تم الاستلام", 200
 
-# تشغيل التطبيق
+# تشغيل السيرفر
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
