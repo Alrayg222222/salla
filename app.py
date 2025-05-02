@@ -56,7 +56,7 @@ def webhook():
     data = request.get_json()
     
     # تنسيق الرسالة بشكل مناسب
-    message = "<b>📦 سلة:</b>\n\n"
+    message = "<b>📦 Webhook من سلة:</b>\n\n"
     
     # تفاصيل المنتجات التي تم شراؤها في الطلب الحالي
     message += "<b>تفاصيل المنتجات:</b>\n"
@@ -67,16 +67,16 @@ def webhook():
         
         # إضافة تفاصيل المنتج مع السعر والكمية
         message += f"- <b>{product_name}</b> x{quantity}\n"
-        message += f"  السعر: <b>{price:.2f} {data['data']['total']['currency']}</b>\n"
+        message += f"  السعر: <font color='green'><b>{price:.2f} {data['data']['total']['currency']}</b></font>\n"
     
     # مجموع المنتجات
     total_amount = data['data']['total']['amount']
     message += "\n<b>مجموع المنتجات:</b>\n"
-    message += f"المجموع: <b>{total_amount:.2f} {data['data']['total']['currency']}</b>\n"
+    message += f"المجموع: <font color='blue'><b>{total_amount:.2f} {data['data']['total']['currency']}</b></font>\n"
     
     # إجمالي الطلب
     message += "\n<b>إجمالي الطلب:</b>\n"
-    message += f"المجموع: <b>{total_amount:.2f} {data['data']['total']['currency']}</b>\n"
+    message += f"المجموع: <font color='blue'><b>{total_amount:.2f} {data['data']['total']['currency']}</b></font>\n"
     
     # تحديث عدد مرات شراء كل منتج
     for item in data['data']['items']:
@@ -90,10 +90,10 @@ def webhook():
             product_purchase_count[product_name] = quantity
     
     # عرض المنتجات المتراكمة مع الكميات (مرقمة)
-    message += "\n<b>المنتجات التي تم شراءها اليوم:</b>\n"
+    message += "\n<b>تفاصيل المنتجات المتراكمة:</b>\n"
     counter = 1
     for product, quantity in product_purchase_count.items():
-        message += f"{counter}. <b>{product}</b>: <b>{quantity}</b>\n"
+        message += f"{counter}. <b>{product}</b>: <font color='red'><b>{quantity}</b></font>\n"
         counter += 1
     
     # تحديث المجموع الإجمالي
@@ -103,8 +103,8 @@ def webhook():
     message += "\n\n\n\n\n"  # 5 أسطر فارغة
 
     # عرض المجموع الإجمالي للمبالغ التي تم جمعها في آخر 24 ساعة
-    message += "<b>دخلنا اليوم:</b>\n"
-    message += f"المجموع: <b>{total_collected:.2f} {data['data']['total']['currency']}</b>\n"
+    message += "<b>المجموع الإجمالي خلال آخر 24 ساعة:</b>\n"
+    message += f"المجموع: <font color='green'><b>{total_collected:.2f} {data['data']['total']['currency']}</b></font>\n"
     
     # إرسال الرسالة إلى تيليجرام
     send_to_telegram(message)
