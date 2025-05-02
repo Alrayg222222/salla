@@ -69,7 +69,7 @@ def webhook():
         
         # إضافة أول كلمة من المنتج بين قوسين بعد المجموع
         message += f"({first_word}) "
-    
+    message += "\n\n\n\n\n"
     # تفاصيل المنتجات التي تم شراؤها في الطلب الحالي
     message += "\n<b>تفاصيل المنتجات:</b>\n"
     for item in data['data']['items']:
