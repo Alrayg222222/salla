@@ -65,7 +65,7 @@ def webhook():
     message += "\n\n\n\n\n"
     message += "🎉" * 13 + "\n"
 
-    # تفاصيل المنتجات (أول 4 كلمات)
+    # تفاصيل المنتجات (أول 4 كلمات فقط)
     message += "\n<b>تفاصيل المنتجات:</b>\n"
     for item in items:
         full_name = item.get("name", "")
@@ -85,7 +85,7 @@ def webhook():
     message += "\n" + "🎉" * 13 + "\n"
     message += "<b>المنتجات التي تم شراءها اليوم:</b>\n"
     for product, quantity in product_purchase_count.items():
-        short_name = " ".join(product.split()[:2])
+        short_name = " ".join(product.split()[:3])  # ← أول 3 كلمات فقط
         message += f"• ⚽{quantity}⚽ <b>{short_name}</b>\n"
     message += "🎉" * 13 + "\n"
 
