@@ -2,20 +2,24 @@ from flask import Flask, request
 import requests
 import os
 from datetime import datetime, timedelta
+import pytz  # لإدارة المنطقة الزمنية
 
 app = Flask(__name__)
 
-# جلب التوكن و Chat ID من متغيرات البيئة
+# إعداد التوكنات و IDs
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
 SECOND_CHAT_ID = os.environ.get("SECOND_CHAT_ID")
 
-# متغيرات لحفظ المجموع التراكمي وعدد مرات شراء كل منتج
+# المنطقة الزمنية للرياض
+riyadh_tz = pytz.timezone("Asia/Riyadh")
+
+# المتغيرات التراكمية
 total_collected = 0
-last_reset_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+last_reset_time = datetime.now(riyadh_tz).replace(hour=0, minute=0, second=0, microsecond=0)
 product_purchase_count = {}
 
-# إرسال الرسالة إلى Telegram
+# دالة الإرسال إلى تيليجرام
 def send_to_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     for chat_id in [CHAT_ID, SECOND_CHAT_ID]:
@@ -30,16 +34,16 @@ def send_to_telegram(message):
             except Exception as e:
                 print(f"خطأ أثناء الإرسال إلى Telegram: {e}")
 
-# تحديث المجموع التراكمي كل 24 ساعة
+# دالة تحديث المجموع التراكمي حسب توقيت الرياض
 def update_total_collected(amount):
     global total_collected, last_reset_time
-    current_time = datetime.now()
+    current_time = datetime.now(riyadh_tz)
     if current_time >= last_reset_time + timedelta(days=1):
         total_collected = 0
         last_reset_time = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
     total_collected += amount
 
-# نقطة استقبال Webhook
+# Webhook
 @app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.get_json()
@@ -53,7 +57,6 @@ def webhook():
     # بداية الرسالة
     message = "<b>💸شراء💸</b> <b>{:.2f} {}</b> ".format(total_amount, currency)
 
-    # إضافة أول كلمتين من كل منتج بين قوسين
     for item in items:
         name = item.get("name", "")
         short_name = " ".join(name.split()[:2])
@@ -62,7 +65,7 @@ def webhook():
     message += "\n\n\n\n\n"
     message += "🎉" * 13 + "\n"
 
-    # تفاصيل المنتجات (أول 4 كلمات فقط)
+    # تفاصيل المنتجات (أول 4 كلمات)
     message += "\n<b>تفاصيل المنتجات:</b>\n"
     for item in items:
         full_name = item.get("name", "")
@@ -72,13 +75,13 @@ def webhook():
         message += f"- <b>{short_name}</b> x{quantity}\n"
         message += f"  السعر: <b>{price:.2f} {currency}</b>\n"
 
-    # تحديث عداد شراء كل منتج
+    # تحديث عداد المنتجات
     for item in items:
         name = item.get("name", "")
         quantity = item.get("quantity", 1)
         product_purchase_count[name] = product_purchase_count.get(name, 0) + quantity
 
-    # عرض المنتجات التي تم شراءها اليوم
+    # عرض المنتجات المشتراة اليوم
     message += "\n" + "🎉" * 13 + "\n"
     message += "<b>المنتجات التي تم شراءها اليوم:</b>\n"
     for product, quantity in product_purchase_count.items():
@@ -86,10 +89,10 @@ def webhook():
         message += f"• ⚽{quantity}⚽ <b>{short_name}</b>\n"
     message += "🎉" * 13 + "\n"
 
-    # تحديث المجموع التراكمي
+    # تحديث التراكمي
     update_total_collected(total_amount)
 
-    # عرض المجموع التراكمي خلال آخر 24 ساعة
+    # المجموع خلال آخر 24 ساعة
     message += "\n\n\n\n\n"
     message += "💰 <b>المجموع خلال آخر 24 ساعة:</b>\n"
     message += f"💵 <b>{total_collected:.2f} {currency}</b>\n"
@@ -99,7 +102,7 @@ def webhook():
 
     return "تم الاستلام", 200
 
-# تشغيل السيرفر
+# تشغيل التطبيق
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
