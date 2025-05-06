@@ -94,7 +94,7 @@ def webhook():
         short_name = " ".join(name.split()[:2])
         message += f"({short_name}) "
 
-    message += "\n\n" + "🎉" * 13 + "\n"
+    message += "\n\n\n" + "🎉" * 13 + "\n"
 
     # تفاصيل المنتجات (أول 4 كلمات فقط)
     message += "\n<b>تفاصيل المنتجات:</b>\n"
