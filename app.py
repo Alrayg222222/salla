@@ -16,20 +16,11 @@ riyadh_tz = pytz.timezone("Asia/Riyadh")
 
 # المتغيرات التراكمية
 total_collected = 0
-weekly_collected = 0
-monthly_collected = 0
 product_purchase_count = {}
 
-# إعداد توقيتات التصفير
+# توقيت التصفير اليومي
 now = datetime.now(riyadh_tz)
 last_reset_time = now.replace(hour=0, minute=0, second=0, microsecond=0)
-
-# بداية الأسبوع: آخر أربعاء سابق أو اليوم إذا كان هو الأربعاء
-days_since_wednesday = (now.weekday() - 2) % 7
-last_weekly_reset_time = (now - timedelta(days=days_since_wednesday)).replace(hour=0, minute=0, second=0, microsecond=0)
-
-# بداية الشهر
-last_monthly_reset_time = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
 # دالة الإرسال إلى تيليجرام
 def send_to_telegram(message):
@@ -46,34 +37,20 @@ def send_to_telegram(message):
             except Exception as e:
                 print(f"خطأ أثناء الإرسال إلى Telegram: {e}")
 
-# دالة تحديث المجاميع
+# دالة تحديث المجاميع اليومية فقط
 def update_total_collected(amount):
-    global total_collected, weekly_collected, monthly_collected
-    global last_reset_time, last_weekly_reset_time, last_monthly_reset_time
-    global product_purchase_count
+    global total_collected, last_reset_time, product_purchase_count
 
     current_time = datetime.now(riyadh_tz)
 
-    # تصفير اليومي
+    # تصفير يومي
     if current_time >= last_reset_time + timedelta(days=1):
         total_collected = 0
         last_reset_time = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
         product_purchase_count.clear()
 
-    # تصفير الأسبوعي (كل أربعاء 12 صباحًا)
-    if current_time >= last_weekly_reset_time + timedelta(days=7):
-        weekly_collected = 0
-        last_weekly_reset_time = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
-
-    # تصفير الشهري (كل 1 ميلادي 12 صباحًا)
-    if current_time.month != last_monthly_reset_time.month or current_time.year != last_monthly_reset_time.year:
-        monthly_collected = 0
-        last_monthly_reset_time = current_time.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-
-    # تحديث المجاميع
+    # تحديث التراكمي
     total_collected += amount
-    weekly_collected += amount
-    monthly_collected += amount
 
 # Webhook
 @app.route('/webhook', methods=['POST'])
@@ -127,16 +104,19 @@ def webhook():
     message += "\n\n💰 <b>دخلنا اليوم:</b>\n"
     message += f"💵 <b>{total_collected:.2f} {currency}</b>\n"
 
-    message += "\n💼 <b>دخلنا هذا الأسبوع:</b>\n"
-    message += f"📈 <b>{weekly_collected:.2f} {currency}</b>\n"
-
-    message += "\n📅 <b>دخلنا هذا الشهر:</b>\n"
-    message += f"🪙 <b>{monthly_collected:.2f} {currency}</b>\n"
-
     # إرسال الرسالة
     send_to_telegram(message)
 
     return "تم الاستلام", 200
+
+# health check
+@app.route('/status', methods=['GET'])
+@app.route('/health', methods=['GET'])
+def health_check():
+    return {
+        "status": "ok",
+        "time": datetime.now(riyadh_tz).isoformat()
+    }, 200
 
 # تشغيل التطبيق
 if __name__ == '__main__':
