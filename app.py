@@ -43,11 +43,11 @@ def update_total_collected(amount):
 
     current_time = datetime.now(riyadh_tz)
 
-    # تصفير يومي
-    if current_time >= last_reset_time + timedelta(days=1):
+    # تصفير يومي بناءً على اختلاف التاريخ
+    if current_time.date() != last_reset_time.date():
         total_collected = 0
-        last_reset_time = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
         product_purchase_count.clear()
+        last_reset_time = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
 
     # تحديث التراكمي
     total_collected += amount
